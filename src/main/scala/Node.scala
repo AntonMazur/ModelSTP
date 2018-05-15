@@ -86,7 +86,7 @@ object Node{
 
   def runPackageSending(): Unit = {
     nodes.foreach(node => Future { node.sendPackageToNeighbours })
-    Thread.sleep(5000)
+    Thread.sleep(3000)
   }
 
   def dispose(): Unit = {

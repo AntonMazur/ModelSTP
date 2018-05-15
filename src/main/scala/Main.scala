@@ -11,20 +11,24 @@ import scala.util.{Random}
 import scala.concurrent.ExecutionContext.Implicits.global
 
 object Main extends App{
-//  runSTP(mockData())
+  val system = ActorSystem("System")
+
+  //  runSTP(mockData())
 
   def runSTP(adjMatr: Array[Array[Boolean]]): Array[Array[Boolean]] = {
-    val system = ActorSystem("System")
     val nodes = Set[ActorRef]()
     val nodeIDs = generateSetOfInts(adjMatr.length)
     for (i <- 0 until adjMatr.length) {
       var nbhrs = Seq[Int]()
       for (j <- 0 until adjMatr(0).length if i != j && adjMatr(i)(j))
         nbhrs = nbhrs :+ nodeIDs(j)
-      Future { nodes.add(system.actorOf(Props(Node(nodeIDs(i), nbhrs)))) }
-      Thread.sleep(2000)
+      val futureResult = Future { nodes.add(system.actorOf(Props(Node(nodeIDs(i), nbhrs)))) }
     }
 
+    val stringBuilder: StringBuilder = new StringBuilder("Correspondence between matrix position and node's id:\n\n")
+    for (i <- 0 until nodeIDs.length)
+      stringBuilder.append(s"Position in matrix: ${(i+1)} - id in network: ${nodeIDs(i)}\n")
+    Node.log(stringBuilder.mkString)
     Node.run(array2map(nodeIDs))
   }
 
@@ -33,7 +37,7 @@ object Main extends App{
   }
 
   def buildUI(): JFrame = {
-    def buildTextArea(x: Int = 200, y: Int = 100, width: Int = 350, height: Int = 350,
+    def buildTextArea(x: Int = 200, y: Int = 50, width: Int = 350, height: Int = 350,
                       wrapLines: Boolean = true, isEditable: Boolean = false): (JScrollPane, JTextArea) = {
       val textArea = new JTextArea()
       textArea.setLineWrap(wrapLines)
@@ -42,6 +46,13 @@ object Main extends App{
       val scPane = new JScrollPane(textArea)
       scPane.setBounds(x, y, width, height)
       (scPane, textArea)
+    }
+
+    def buildLabel(text: String, x: Int = 30, y: Int = 20): JLabel = {
+      val label = new JLabel(text)
+      label.setFont(label.getFont().deriveFont(20f))
+      label.setBounds(x, y, 200, 30)
+      label
     }
 
     def loadImage(path: String): Image = Toolkit.getDefaultToolkit.getImage(pathToResources + path)
@@ -58,22 +69,25 @@ object Main extends App{
     mainWindow.setTitle("Model STP")
     mainWindow.setBounds(250, 100, 1050, 700)
     mainWindow.setIconImage(loadImage("scalaLogo.jpeg"))
-    val (inputSP, inputTA) = buildTextArea(x = 30, y = 50, isEditable = true)
+    val (inputSP, inputTA) = buildTextArea(x = 30, isEditable = true)
     mainWindow.add(inputSP)
-    val (outSP, logTA) = buildTextArea(x = 400, y = 30, width = 600, height = 600)
+    val (outSP, logTA) = buildTextArea(x = 400, width = 600, height = 600)
     mainWindow.add(outSP)
-    val startButton = buildButton(y = 500, pathToIcon = "play-button.jpg")
+    val startButton = buildButton(x = 130, y = 500, pathToIcon = "play-button.jpg")
     Node.setLogger(logTA)
     startButton.addActionListener(event => {
       val result = Future {
         runSTP(readAdjMatrix(inputTA.getText split ("\n") map (_.split(" "))))
       }
       result foreach (result => {
-          val binRes: Array[Array[Int]] = result map (row => row map (bool => if (bool) 1 else 0))
-          Node.log(binRes.map(row => row.mkString(" ")).mkString("\n"))
-        });
+        Node.log("Result: ")
+        val binRes: Array[Array[Int]] = result map (row => row map (bool => if (bool) 1 else 0))
+        Node.log(binRes.map(row => row.mkString(" ")).mkString("\n"))
+      });
     });
     mainWindow.add(startButton)
+    mainWindow.add(buildLabel("Input data:"))
+    mainWindow.add(buildLabel("Work log:", x = 400))
     mainWindow
   }
 
