@@ -1,5 +1,1 @@
-
-
-case class Message(senderId: Int) {
-
-}
+case class Message(senderId: Int, retranslId: Int)
